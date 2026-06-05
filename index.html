@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhai AI - Emotional Assistant</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff; height: 100vh; overflow: hidden;
+        }
+       .container { max-width: 600px; margin: 0 auto; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
+       .ai-avatar {
+            width: 150px; height: 150px; margin: 20px auto;
+            border-radius: 50%; background: #00ff88;
+            box-shadow: 0 0 30px #00ff88;
+            animation: pulse 2s infinite;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 60px; transition: 0.3s;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 30px #00ff88; }
+            50% { transform: scale(1.05); box-shadow: 0 0 50px #00ff88; }
+        }
+       .ai-avatar.talking { background: #ff6b00; box-shadow: 0 0 50px #ff6b00; animation: talk 0.5s infinite; }
+        @keyframes talk {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+       .chat-box {
+            flex: 1; background: rgba(0,0,0,0.3); border-radius: 15px;
+            padding: 15px; overflow-y: auto; margin-bottom: 15px;
+        }
+       .msg { margin: 10px 0; padding: 10px 15px; border-radius: 12px; max-width: 80%; animation: slideIn 0.3s; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } }
+       .user-msg { background: #007bff; margin-left: auto; }
+       .ai-msg { background: #333; }
+       .controls { display: flex; gap: 10px; }
+       .btn {
+            flex: 1; padding: 18px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+       .btn-mic { background: #28a745; color: white; }
+       .btn-mic.listening { background: #dc3545; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+       .status { text-align: center; padding: 10px; font-size: 14px; color: #00ff88; }
+       .emotion { text-align: center; font-size: 24px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="ai-avatar" id="avatar">🤖</div>
+        <div class="emotion" id="emotion">😊 Normal</div>
+        <div class="status" id="status">Mic dabao aur bolo "Bhai YouTube khol"</div>
+
+        <div class="chat-box" id="chatBox">
+            <div class="msg ai-msg">Bhai main tera AI hun 💀 Bol kya kaam hai?</div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-mic" id="micBtn" onclick="toggleMic()">🎤 SUN RAHA HU</button>
+        </div>
+    </div>
+
+<script>
+    const avatar = document.getElementById('avatar');
+    const emotion = document.getElementById('emotion');
+    const chatBox = document.getElementById('chatBox');
+    const micBtn = document.getElementById('micBtn');
+    const status = document.getElementById('status');
+
+    let recognition;
+    let isListening = false;
+    let currentEmotion = 'normal';
+
+    // Voice setup
+    const synth = window.speechSynthesis;
+    let voices = [];
+
+    function loadVoices() {
+        voices = synth.getVoices();
+    }
+    loadVoices();
+    if (speechSynthesis.onvoiceschanged!== undefined) {
+        speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    // Emotions database
+    const emotions = {
+        happy: { emoji: '😄', color: '#00ff88', responses: ['Mast hai bhai!', 'Ekdum jhakaas!', 'Sahi hai boss!'] },
+        sad: { emoji: '😢', color: '#3498db', responses: ['Arre yaar kya ho gaya?', 'Chal koi na, sab theek ho jayega', 'Main hun na tere saath'] },
+        angry: { emoji: '😠', color: '#e74c3c', responses: ['Abey saale!', 'Gussa mat dilaa bhai', 'Shant ho ja zara'] },
+        excited: { emoji: '🤩', color: '#f39c12', responses: ['Woooo! Mast!', 'Full power mode on!', 'Chal phodte hain!'] },
+        normal: { emoji: '😊', color: '#00ff88', responses: ['Haan bhai bol', 'Sun raha hun', 'Kya seva karu?'] }
+    };
+
+    function setEmotion(type) {
+        currentEmotion = type;
+        const e = emotions[type];
+        emotion.innerText = `${e.emoji} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+        avatar.style.background = e.color;
+        avatar.style.boxShadow = `0 0 30px ${e.color}`;
+    }
+
+    function speak(text, emo = currentEmotion) {
+        setEmotion(emo);
+        avatar.classList.add('talking');
+
+        addMessage(text, 'ai');
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'hi-IN';
+        utter.rate = 1.1;
+        utter.pitch = 1;
+
+        // Hindi voice dhoond
+        const hindiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang === 'hi_IN');
+        if (hindiVoice) utter.voice = hindiVoice;
+
+        utter.onend = () => {
+            avatar.classList.remove('talking');
+            setEmotion('normal');
+        };
+        synth.speak(utter);
+    }
+
+    function addMessage(text, sender) {
+        const msg = document.createElement('div');
+        msg.className = `msg ${sender}-msg`;
+        msg.innerText = text;
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Voice Recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.lang = 'hi-IN';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            isListening = true;
+            micBtn.classList.add('listening');
+            micBtn.innerText = '🛑 SUN RAHA HU...';
+            status.innerText = 'Bol bhai...';
+        };
+
+        recognition.onresult = (event) => {
+            const command = event.results[0][0].transcript.toLowerCase();
+            addMessage(command, 'user');
+            processCommand(command);
+        };
+
+        recognition.onerror = (event) => {
+            status.innerText = 'Error: ' + event.error;
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            micBtn.classList.remove('listening');
+            micBtn.innerText = '🎤 SUN RAHA HU';
+            status.innerText = 'Mic dabao aur bolo';
+        };
+    } else {
+        alert('Bhai tere browser mein voice support nahi hai. Chrome use kar');
+    }
+
+    function toggleMic() {
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    }
+
+    // Command Processing + Emotions
+    function processCommand(cmd) {
+        // Emotions detect
+        if (cmd.includes('sad') || cmd.includes('dukhi') || cmd.includes('mood off')) {
+            speak(random(emotions.sad.responses), 'sad');
+            return;
+        }
+        if (cmd.includes('gussa') || cmd.includes('angry') || cmd.includes('bakchod')) {
+            speak(random(emotions.angry.responses), 'angry');
+            return;
+        }
+        if (cmd.includes('mast') || cmd.includes('happy') || cmd.includes('khush')) {
+            speak(random(emotions.happy.responses), 'happy');
+            return;
+        }
+
+        // Actions
+        if (cmd.includes('youtube') && (cmd.includes('khol') || cmd.includes('open'))) {
+            speak('Youtube khol raha hun bhai', 'excited');
+            setTimeout(() => window.open('https://youtube.com', '_blank'), 1000);
+        }
+        else if (cmd.includes('google') && (cmd.includes('khol') || cmd.includes('search'))) {
+            speak('Google khol diya', 'normal');
+            window.open('https://google.com', '_blank');
+        }
+        else if (cmd.includes('whatsapp')) {
+            speak('WhatsApp khol raha hun', 'normal');
+            window.open('https://wa.me/', '_blank');
+        }
+        else if (cmd.includes('instagram') || cmd.includes('insta')) {
+            speak('Instagram khol diya bhai', 'excited');
+            window.open('https://instagram.com', '_blank');
+        }
+        else if (cmd.includes('time') || cmd.includes('baj')) {
+            const time = new Date().toLocaleTimeString('hi-IN');
+            speak(`Bhai abhi ${time} baj rahe hain`, 'normal');
+        }
+        else if (cmd.includes('kaun hai') || cmd.includes('naam')) {
+            speak('Main hun tera Bhai AI. Tera personal assistant 💀', 'happy');
+        }
+        else if (cmd.includes('bye') || cmd.includes('band kar')) {
+            speak('Theek hai bhai, milte hain. Dhyaan rakhna', 'sad');
+        }
+        else {
+            // Random reply
+            speak(random(emotions.normal.responses), 'normal');
+        }
+    }
+
+    function random(arr) {
+        return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    // Keep tab alive trick
+    setInterval(() => {
+        if (!document.hidden) console.log('Bhai AI running...');
+    }, 30000);
+
+</script>
+</body>
+  </html>
