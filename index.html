@@ -3,107 +3,179 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bhai AI - Emotional Assistant</title>
+    <title>HyperDrive 3D - Experience Speed</title>
+    
+    <!-- CSS STYLES -->
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-            color: #fff; height: 100vh; overflow: hidden;
+            background-color: #050508;
+            color: #ffffff;
+            overflow-x: hidden;
         }
-       .container { max-width: 600px; margin: 0 auto; padding: 20px; height: 100vh; display: flex; flex-direction: column; }
-       .ai-avatar {
-            width: 150px; height: 150px; margin: 20px auto;
-            border-radius: 50%; background: #00ff88;
-            box-shadow: 0 0 30px #00ff88;
-            animation: pulse 2s infinite;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 60px; transition: 0.3s;
+
+        /* Fixed 3D viewport behind text */
+        .car-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            pointer-events: none; /* Allows scrolling over the canvas */
         }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 30px #00ff88; }
-            50% { transform: scale(1.05); box-shadow: 0 0 50px #00ff88; }
+
+        spline-viewer {
+            width: 100%;
+            height: 100%;
         }
-       .ai-avatar.talking { background: #ff6b00; box-shadow: 0 0 50px #ff6b00; animation: talk 0.5s infinite; }
-        @keyframes talk {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+
+        /* Fullscreen panels */
+        .scroll-section {
+            position: relative;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            padding: 0 10%;
+            z-index: 2;
+            background: transparent;
         }
-       .chat-box {
-            flex: 1; background: rgba(0,0,0,0.3); border-radius: 15px;
-            padding: 15px; overflow-y: auto; margin-bottom: 15px;
+
+        /* Content Layouts */
+        .content-box {
+            max-width: 550px;
+            background: rgba(5, 5, 8, 0.55);
+            padding: 40px;
+            border-left: 4px solid #ff0055;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 4px;
         }
-       .msg { margin: 10px 0; padding: 10px 15px; border-radius: 12px; max-width: 80%; animation: slideIn 0.3s; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } }
-       .user-msg { background: #007bff; margin-left: auto; }
-       .ai-msg { background: #333; }
-       .controls { display: flex; gap: 10px; }
-       .btn {
-            flex: 1; padding: 18px; border: none; border-radius: 12px;
-            font-size: 16px; font-weight: bold; cursor: pointer;
+
+        .right-align {
+            margin-left: auto;
+            border-left: none;
+            border-right: 4px solid #00f0ff;
+            text-align: right;
         }
-       .btn-mic { background: #28a745; color: white; }
-       .btn-mic.listening { background: #dc3545; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-       .status { text-align: center; padding: 10px; font-size: 14px; color: #00ff88; }
-       .emotion { text-align: center; font-size: 24px; margin: 10px 0; }
+
+        /* Typography */
+        .tag {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #8a8a93;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        h1, h2 {
+            font-size: 3.5rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 20px;
+            letter-spacing: -1px;
+        }
+
+        .highlight {
+            color: #ff0055;
+        }
+
+        .right-align .highlight {
+            color: #00f0ff;
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #c4c4cc;
+            line-height: 1.6;
+        }
     </style>
+
+    <!-- External CDNs (No local file paths needed) -->
+    <script type="module" src="https://unpkg.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="ai-avatar" id="avatar">🤖</div>
-        <div class="emotion" id="emotion">😊 Normal</div>
-        <div class="status" id="status">Mic dabao aur bolo "Bhai YouTube khol"</div>
 
-        <div class="chat-box" id="chatBox">
-            <div class="msg ai-msg">Bhai main tera AI hun 💀 Bol kya kaam hai?</div>
-        </div>
-
-        <div class="controls">
-            <button class="btn btn-mic" id="micBtn" onclick="toggleMic()">🎤 SUN RAHA HU</button>
-        </div>
+    <!-- Fixed 3D Car Viewport -->
+    <div class="car-container">
+        <!-- Live Optimized 3D Car Scene from Spline Community -->
+        <spline-viewer id="carModel" url="https://spline.design"></spline-viewer>
     </div>
 
-<script>
-    const avatar = document.getElementById('avatar');
-    const emotion = document.getElementById('emotion');
-    const chatBox = document.getElementById('chatBox');
-    const micBtn = document.getElementById('micBtn');
-    const status = document.getElementById('status');
+    <!-- Scrolling Content Sections -->
+    <section class="scroll-section" id="sec1">
+        <div class="content-box">
+            <span class="tag">Next-Gen Hypercar</span>
+            <h1>HYPERDRIVE <br><span class="highlight">EV-01</span></h1>
+            <p>Aerodynamics redefined. Scroll down to unleash the future of automotive perfection.</p>
+        </div>
+    </section>
 
-    let recognition;
-    let isListening = false;
-    let currentEmotion = 'normal';
+    <section class="scroll-section" id="sec2">
+        <div class="content-box right-align">
+            <span class="tag">Performance</span>
+            <h2>0-100 KM/H IN <br><span class="highlight">1.9 SECONDS</span></h2>
+            <p>Powered by a quad-motor setup with instant torque distribution across all wheels.</p>
+        </div>
+    </section>
 
-    // Voice setup
-    const synth = window.speechSynthesis;
-    let voices = [];
+    <section class="scroll-section" id="sec3">
+        <div class="content-box">
+            <span class="tag">Design Language</span>
+            <h2>CRAFTED BY <br><span class="highlight">AERODYNAMICS</span></h2>
+            <p>Every curve, vent, and line is engineered to cut through the air with zero drag coefficient.</p>
+        </div>
+    </section>
 
-    function loadVoices() {
-        voices = synth.getVoices();
-    }
-    loadVoices();
-    if (speechSynthesis.onvoiceschanged!== undefined) {
-        speechSynthesis.onvoiceschanged = loadVoices;
-    }
+    <!-- JAVASCRIPT MECHANICS -->
+    <script>
+        // Register GSAP Plugin
+        gsap.registerPlugin(ScrollTrigger);
 
-    // Emotions database
-    const emotions = {
-        happy: { emoji: '😄', color: '#00ff88', responses: ['Mast hai bhai!', 'Ekdum jhakaas!', 'Sahi hai boss!'] },
-        sad: { emoji: '😢', color: '#3498db', responses: ['Arre yaar kya ho gaya?', 'Chal koi na, sab theek ho jayega', 'Main hun na tere saath'] },
-        angry: { emoji: '😠', color: '#e74c3c', responses: ['Abey saale!', 'Gussa mat dilaa bhai', 'Shant ho ja zara'] },
-        excited: { emoji: '🤩', color: '#f39c12', responses: ['Woooo! Mast!', 'Full power mode on!', 'Chal phodte hain!'] },
-        normal: { emoji: '😊', color: '#00ff88', responses: ['Haan bhai bol', 'Sun raha hun', 'Kya seva karu?'] }
-    };
+        const car = document.getElementById('carModel');
 
-    function setEmotion(type) {
-        currentEmotion = type;
-        const e = emotions[type];
-        emotion.innerText = `${e.emoji} ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-        avatar.style.background = e.color;
-        avatar.style.boxShadow = `0 0 30px ${e.color}`;
-    }
+        // Execute animation setup once 3D canvas loads completely
+        car.addEventListener('load', () => {
+            
+            const carTimeline = gsap.timeline({
+                scrollTrigger: {
+                    trigger: "body",
+                    start: "top top",
+                    end: "bottom bottom",
+                    scrub: 1.5, // Creates a smooth lag effect for ultra-premium feel
+                }
+            });
 
+            // 1st Transition (Scroll to Sec 2): Side rotation & Zoom in
+            carTimeline.to(car, {
+                rotationY: Math.PI * 0.4, 
+                scale: 1.15,
+                x: -50,
+                duration: 3
+            })
+            // 2nd Transition (Scroll to Sec 3): Angled tilt & Rear focus
+            .to(car, {
+                rotationX: Math.PI * 0.15,
+                rotationY: Math.PI * 0.8, 
+                scale: 1.3,
+                x: 80,
+                y: -30,
+                duration: 3
+            });
+        });
+    </script>
+</body>
+</html>
     function speak(text, emo = currentEmotion) {
         setEmotion(emo);
         avatar.classList.add('talking');
