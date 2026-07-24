@@ -1,103 +1,656 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Eqzsol - Photo se Math Solve</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>body{background:#0f172a;color:white}</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title> Eqzsol </title>
+  <!-- CDNs -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.4.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <style>
+    :root {
+      --primary: #2196F3;
+      --primary-dark: #1976D2;
+      --primary-light: #BBDEFB;
+      --accent: #FF4081;
+      --text: #212121;
+      --text-secondary: #757575;
+      --divider: #BDBDBD;
+      --bg: #FAFAFA;
+      --surface: #FFFFFF;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 500px;
+      margin: 0 auto;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    /* Header */
+    .header {
+      background: var(--primary);
+      color: white;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header i { font-size: 24px; }
+    .header h1 { font-size: 20px; font-weight: 500; }
+    
+    /* Nav */
+    .nav {
+      display: flex;
+      background: var(--surface);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      background: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+    }
+    .nav-btn.active {
+      color: var(--primary);
+    }
+    .nav-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 20%;
+      right: 20%;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 3px 3px 0 0;
+    }
+    
+    /* Views */
+    .view {
+      display: none;
+      padding: 16px;
+      min-height: calc(100vh - 110px);
+    }
+    .view.active { display: block; }
+    
+    /* Camera */
+    .camera-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    #cameraVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .scan-frame {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 70%;
+      aspect-ratio: 1;
+      border: 2px dashed rgba(255,255,255,0.8);
+      border-radius: 8px;
+      pointer-events: none;
+    }
+    .scan-frame::before, .scan-frame::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-color: var(--primary);
+      border-style: solid;
+    }
+    .scan-frame::before { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
+    .scan-frame::after { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+    
+    .capture-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(33,150,243,0.4);
+      transition: background 0.2s;
+    }
+    .capture-btn:active { background: var(--primary-dark); }
+    
+    /* Upload */
+    .upload-box {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 2px dashed var(--divider);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .upload-box:hover, .upload-box.dragover {
+      border-color: var(--primary);
+      background: var(--primary-light);
+    }
+    .upload-box i { font-size: 48px; color: var(--primary); }
+    .upload-box p { font-size: 16px; }
+    
+    /* Crop */
+    #cropImage { max-width: 100%; display: block; }
+    .cropper-container { margin-bottom: 16px; }
+    .confirm-btn {
+      width: 100%;
+      padding: 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    /* AI Result */
+    .ai-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 48px 16px;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid var(--primary-light);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .result-container {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 16px;
+    }
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .result-header h3 { font-size: 16px; color: var(--text-secondary); }
+    .copy-btn {
+      padding: 8px 16px;
+      background: var(--primary-light);
+      color: var(--primary-dark);
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .solution-text {
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+    }
+    .solution-text img { max-width: 100%; border-radius: 8px; }
+    
+    .back-btn {
+      width: 100%;
+      padding: 14px;
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    
+    /* History */
+    .history-list { display: flex; flex-direction: column; gap: 12px; }
+    .history-item {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .history-item:active { transform: scale(0.98); }
+    .history-thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #eee;
+      flex-shrink: 0;
+    }
+    .history-info { flex: 1; min-width: 0; }
+    .history-subject {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+    .history-delete {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: none;
+      color: var(--text-secondary);
+      font-size: 18px;
+      cursor: pointer;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .history-delete:active { background: #ffebee; color: #c62828; }
+    
+    .empty-state {
+      text-align: center;
+      padding: 48px 16px;
+      color: var(--text-secondary);
+    }
+    .empty-state i { font-size: 48px; margin-bottom: 12px; color: var(--divider); }
+    
+    /* Hidden canvas for capture */
+    #captureCanvas { display: none; }
+  </style>
 </head>
-<body class="p-4 min-h-screen flex flex-col">
-
-<h1 class="text-2xl font-bold text-center mb-4"> Eqzsol </h1>
-
-<!-- Camera Section -->
-<div class="bg-slate-800 p-4 rounded-xl">
-  <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
-  <button onclick="document.getElementById('imageInput').click()" class="w-full bg-blue-600 p-3 rounded-lg font-bold">Camera se Photo Lo</button>
-  <img id="preview" class="mt-3 rounded-lg hidden w-full">
-</div>
-
-<!-- Output Section -->
-<div class="mt-4 bg-slate-800 p-4 rounded-xl">
-  <h2 class="font-bold">Step by Step Solution</h2>
-  <div id="output" class="mt-2 text-green-300 whitespace-pre-wrap">Yaha answer aayega...</div>
-  <div class="flex gap-2 mt-3">
-    <button onclick="shareAns()" class="flex-1 bg-green-600 p-2 rounded">Share</button>
-    <button onclick="saveHistory()" class="flex-1 bg-purple-600 p-2 rounded">Save</button>
+<body>
+  <header class="header">
+    <i class="fa fa-square-root-variable"></i>
+    <h1>Eqzsol</h1>
+  </header>
+  
+  <nav class="nav">
+    <button class="nav-btn active" data-view="camera" onclick="switchTab('camera')">SCAN</button>
+    <button class="nav-btn" data-view="upload" onclick="switchTab('upload')">UPLOAD</button>
+    <button class="nav-btn" data-view="history" onclick="switchTab('history')">HISTORY</button>
+  </nav>
+  
+  <!-- Camera View -->
+  <div id="cameraView" class="view active">
+    <div class="camera-container">
+      <video id="cameraVideo" autoplay playsinline></video>
+      <div class="scan-frame"></div>
+    </div>
+    <button class="capture-btn" onclick="captureImage()">
+      <i class="fa fa-camera"></i> CAPTURE
+    </button>
   </div>
-</div>
-
-<!-- History Section -->
-<div class="mt-4 bg-slate-800 p-4 rounded-xl flex-1">
-  <h2 class="font-bold">📜 History</h2>
-  <div id="history"></div>
-</div>
-
-<!-- Footer -->
-<footer class="text-center text-xs text-gray-500 mt-6 pb-4">
-  (made by love)
-</footer>
-
-<script>
-const GEMINI_KEY = "AIzaSyBF8w5Ndm-gQDvkSHhz5_RxPxqnivqrWG4"; // Yaha key daal
-let lastAnswer = "";
-
-document.getElementById('imageInput').onchange = async (e) => {
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = () => { document.getElementById('preview').src = reader.result; document.getElementById('preview').classList.remove('hidden'); }
-  reader.readAsDataURL(file);
-
-  document.getElementById('output').innerText = "Solving in 3-4 seconds...";
-  await solveWithAI(file);
-}
-
-async function solveWithAI(file) {
-  const base64 = await toBase64(file);
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: "You are a math tutor. Read this equation from image and give FULL step by step solution in Hindi. Format: Step1:... Step2:... Final Answer:..." },
-          { inline_data: { mime_type: file.type, data: base64.split(',')[1] } }
-        ]
-      }]
-    })
-  });
-  const data = await res.json();
-  lastAnswer = data.candidates[0].content.parts[0].text;
-  document.getElementById('output').innerText = lastAnswer;
-}
-
-function toBase64(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
-  });
-}
-
-function shareAns() {
-  if(navigator.share) navigator.share({title: 'SnapSolve AI', text: lastAnswer});
-  else {navigator.clipboard.writeText(lastAnswer); alert("Copied!")}
-}
-
-function saveHistory() {
-  let history = JSON.parse(localStorage.getItem('snapsolve') || "[]");
-  history.unshift({time: new Date().toLocaleString(), ans: lastAnswer});
-  localStorage.setItem('snapsolve', JSON.stringify(history));
-  loadHistory();
-}
-
-function loadHistory() {
-  let history = JSON.parse(localStorage.getItem('snapsolve') || "[]");
-  document.getElementById('history').innerHTML = history.map(h => `<div class="bg-slate-700 p-2 rounded mt-2 text-sm">${h.time}<br>${h.ans.slice(0,100)}...</div>`).join('');
-}
-loadHistory();
-</script>
-
+  
+  <!-- Upload View -->
+  <div id="uploadView" class="view">
+    <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+      <i class="fa fa-cloud-upload"></i>
+      <p>Tap to upload image</p>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+  </div>
+  
+  <!-- Crop View -->
+  <div id="cropView" class="view">
+    <div class="cropper-container">
+      <img id="cropImage" src="" alt="Crop preview">
+    </div>
+    <button class="confirm-btn" onclick="confirmCrop()">
+      <i class="fa fa-check"></i> CONFIRM SELECTION
+    </button>
+  </div>
+  
+  <!-- AI Result View -->
+  <div id="aiResultView" class="view">
+    <div id="aiLoading" class="ai-loading">
+      <div class="spinner"></div>
+      <p>Solving with AI...</p>
+    </div>
+    <div id="aiContent" style="display:none;">
+      <div class="result-container">
+        <div class="result-header">
+          <h3><i class="fa fa-lightbulb-o"></i> Solution</h3>
+          <button class="copy-btn" onclick="copySolution()">
+            <i class="fa fa-copy"></i> COPY
+          </button>
+        </div>
+        <div id="solutionText" class="solution-text"></div>
+      </div>
+      <button id="aiBackBtn" class="back-btn" onclick="goBackFromAI()">
+        <i class="fa fa-arrow-left"></i> BACK
+      </button>
+    </div>
+  </div>
+  
+  <!-- History View -->
+  <div id="historyView" class="view">
+    <div id="historyList" class="history-list"></div>
+    <div id="historyEmpty" class="empty-state" style="display:none;">
+      <i class="fa fa-history"></i>
+      <p>No history yet</p>
+    </div>
+  </div>
+  
+  <canvas id="captureCanvas"></canvas>
+  
+  <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+  
+  <script>
+    // State
+    let currentView = 'camera';
+    let previousView = 'camera';
+    let cropper = null;
+    let currentImageBase64 = null;
+    let currentSolution = '';
+    let stream = null;
+    const HISTORY_KEY = 'eduvision_history';
+    const MAX_HISTORY = 10;
+    const API_URL = 'https://router.huggingface.co/v1/chat/completions';
+    const API_KEY = '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';
+    const MODEL = 'moonshotai/Kimi-K2-7-Code-novita';
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      initCamera();
+      renderHistory();
+    });
+    
+    // Tab switching
+    function switchTab(view) {
+      previousView = currentView;
+      currentView = view;
+      
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+      });
+      
+      document.querySelectorAll('.view').forEach(v => {
+        v.classList.toggle('active', v.id === view + 'View');
+      });
+      
+      if (view === 'history') renderHistory();
+      if (view === 'camera' && !stream) initCamera();
+    }
+    
+    // Camera
+    async function initCamera() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: 'environment' } 
+        });
+        const video = document.getElementById('cameraVideo');
+        video.srcObject = stream;
+      } catch (err) {
+        console.error('Camera error:', err);
+        alert('Could not access camera. Please use upload instead.');
+      }
+    }
+    
+    function captureImage() {
+      const video = document.getElementById('cameraVideo');
+      const canvas = document.getElementById('captureCanvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      currentImageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      showCropView(currentImageBase64);
+    }
+    
+    // Upload
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        currentImageBase64 = evt.target.result;
+        showCropView(currentImageBase64);
+      };
+      reader.readAsDataURL(file);
+    }
+    
+    // Crop
+    function showCropView(src) {
+      document.getElementById('cropImage').src = src;
+      switchTab('crop');
+      
+      if (cropper) cropper.destroy();
+      cropper = new Cropper(document.getElementById('cropImage'), {
+        aspectRatio: 1,
+        viewMode: 1,
+        autoCropArea: 0.8,
+      });
+    }
+    
+    function confirmCrop() {
+      if (!cropper) return;
+      const canvas = cropper.getCroppedCanvas({
+        width: 1024,
+        height: 1024,
+        fillColor: '#fff',
+      });
+      currentImageBase64 = canvas.toDataURL('image/jpeg', 0.9);
+      if (cropper) { cropper.destroy(); cropper = null; }
+      solveWithAI(currentImageBase64);
+    }
+    
+    // AI
+    async function solveWithAI(imageBase64) {
+      switchTab('aiResult');
+      document.getElementById('aiLoading').style.display = 'flex';
+      document.getElementById('aiContent').style.display = 'none';
+      
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + API_KEY
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert teacher.'
+              },
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Solve this math question. Transcribe the text then provide a step-by-step solution. Wrap math in $ for inline and $$ for blocks.'
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: { url: imageBase64 }
+                  }
+                ]
+              }
+            ],
+            max_tokens: 2048
+          })
+        });
+        
+        if (!response.ok) throw new Error('API error: ' + response.status);
+        const data = await response.json();
+        const solution = data.choices[0].message.content;
+        currentSolution = solution;
+        
+        displaySolution(solution);
+        saveToHistory(imageBase64, solution);
+      } catch (err) {
+        console.error(err);
+        displaySolution('**Error:** Unable to get solution. Please check your API key and try again.\n\n' + err.message);
+      }
+    }
+    
+    function displaySolution(solution) {
+      document.getElementById('aiLoading').style.display = 'none';
+      document.getElementById('aiContent').style.display = 'block';
+      
+      const container = document.getElementById('solutionText');
+      container.innerHTML = marked.parse(solution);
+      
+      renderMathInElement(container, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false}
+        ],
+        throwOnError: false
+      });
+    }
+    
+    function copySolution() {
+      navigator.clipboard.writeText(currentSolution).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        const original = btn.innerHTML;
+        btn.innerHTML = '<i class="fa fa-check"></i> COPIED';
+        setTimeout(() => btn.innerHTML = original, 2000);
+      });
+    }
+    
+    function goBackFromAI() {
+      if (previousView === 'history') {
+        switchTab('history');
+      } else {
+        switchTab('camera');
+      }
+    }
+    
+    // History
+    function saveToHistory(image, solution) {
+      let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      
+      // Extract subject from first line or use "Math Problem"
+      let subject = 'Math Problem';
+      const lines = solution.split('\n').filter(l => l.trim());
+      if (lines.length > 0) {
+        const first = lines[0].replace(/[#*]/g, '').trim();
+        if (first) subject = first.substring(0, 50);
+      }
+      
+      const item = {
+        id: Date.now().toString(),
+        timestamp: Date.now(),
+        subject: subject,
+        image: image,
+        solution: solution
+      };
+      
+      history.unshift(item);
+      if (history.length > MAX_HISTORY) history = history.slice(0, MAX_HISTORY);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
+    
+    function renderHistory() {
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      const list = document.getElementById('historyList');
+      const empty = document.getElementById('historyEmpty');
+      
+      if (history.length === 0) {
+        list.style.display = 'none';
+        empty.style.display = 'block';
+        return;
+      }
+      
+      list.style.display = 'flex';
+      empty.style.display = 'none';
+      
+      list.innerHTML = history.map(item => {
+        const date = new Date(item.timestamp);
+        const timeStr = date.toLocaleString();
+        return `
+          <div class="history-item" onclick="loadHistoryItem('${item.id}')">
+            <img class="history-thumb" src="${item.image}" alt="">
+            <div class="history-info">
+              <div class="history-subject">${escapeHtml(item.subject)}</div>
+              <div class="history-time">${timeStr}</div>
+            </div>
+            <button class="history-delete" onclick="event.stopPropagation(); deleteHistoryItem('${item.id}')">
+              <i class="fa fa-trash"></i>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+    
+    function loadHistoryItem(id) {
+      const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      const item = history.find(h => h.id === id);
+      if (!item) return;
+      
+      currentImageBase64 = item.image;
+      currentSolution = item.solution;
+      previousView = 'history';
+      
+      displaySolution(item.solution);
+      switchTab('aiResult');
+      
+      // Update back button
+      document.getElementById('aiBackBtn').innerHTML = '<i class="fa fa-arrow-left"></i> BACK TO HISTORY';
+    }
+    
+    function deleteHistoryItem(id) {
+      let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+      history = history.filter(h => h.id !== id);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      renderHistory();
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
 </body>
-</html>
+      </html>
