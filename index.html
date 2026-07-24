@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eqzsol - Photo se Math Solve</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{background:#0f172a;color:white}</style>
+</head>
+<body class="p-4 min-h-screen flex flex-col">
+
+<h1 class="text-2xl font-bold text-center mb-4"> Eqzsol </h1>
+
+<!-- Camera Section -->
+<div class="bg-slate-800 p-4 rounded-xl">
+  <input type="file" id="imageInput" accept="image/*" capture="environment" class="hidden">
+  <button onclick="document.getElementById('imageInput').click()" class="w-full bg-blue-600 p-3 rounded-lg font-bold">Camera se Photo Lo</button>
+  <img id="preview" class="mt-3 rounded-lg hidden w-full">
+</div>
+
+<!-- Output Section -->
+<div class="mt-4 bg-slate-800 p-4 rounded-xl">
+  <h2 class="font-bold">Step by Step Solution</h2>
+  <div id="output" class="mt-2 text-green-300 whitespace-pre-wrap">Yaha answer aayega...</div>
+  <div class="flex gap-2 mt-3">
+    <button onclick="shareAns()" class="flex-1 bg-green-600 p-2 rounded">Share</button>
+    <button onclick="saveHistory()" class="flex-1 bg-purple-600 p-2 rounded">Save</button>
+  </div>
+</div>
+
+<!-- History Section -->
+<div class="mt-4 bg-slate-800 p-4 rounded-xl flex-1">
+  <h2 class="font-bold">📜 History</h2>
+  <div id="history"></div>
+</div>
+
+<!-- Footer -->
+<footer class="text-center text-xs text-gray-500 mt-6 pb-4">
+  (made by love)
+</footer>
+
+<script>
+const GEMINI_KEY = "AIzaSyBF8w5Ndm-gQDvkSHhz5_RxPxqnivqrWG4"; // Yaha key daal
+let lastAnswer = "";
+
+document.getElementById('imageInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = () => { document.getElementById('preview').src = reader.result; document.getElementById('preview').classList.remove('hidden'); }
+  reader.readAsDataURL(file);
+
+  document.getElementById('output').innerText = "Solving in 3-4 seconds...";
+  await solveWithAI(file);
+}
+
+async function solveWithAI(file) {
+  const base64 = await toBase64(file);
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      contents: [{
+        parts: [
+          { text: "You are a math tutor. Read this equation from image and give FULL step by step solution in Hindi. Format: Step1:... Step2:... Final Answer:..." },
+          { inline_data: { mime_type: file.type, data: base64.split(',')[1] } }
+        ]
+      }]
+    })
+  });
+  const data = await res.json();
+  lastAnswer = data.candidates[0].content.parts[0].text;
+  document.getElementById('output').innerText = lastAnswer;
+}
+
+function toBase64(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+  });
+}
+
+function shareAns() {
+  if(navigator.share) navigator.share({title: 'SnapSolve AI', text: lastAnswer});
+  else {navigator.clipboard.writeText(lastAnswer); alert("Copied!")}
+}
+
+function saveHistory() {
+  let history = JSON.parse(localStorage.getItem('snapsolve') || "[]");
+  history.unshift({time: new Date().toLocaleString(), ans: lastAnswer});
+  localStorage.setItem('snapsolve', JSON.stringify(history));
+  loadHistory();
+}
+
+function loadHistory() {
+  let history = JSON.parse(localStorage.getItem('snapsolve') || "[]");
+  document.getElementById('history').innerHTML = history.map(h => `<div class="bg-slate-700 p-2 rounded mt-2 text-sm">${h.time}<br>${h.ans.slice(0,100)}...</div>`).join('');
+}
+loadHistory();
+</script>
+
+</body>
+</html>
