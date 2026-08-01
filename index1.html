@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Hand Race 🏎️</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#050510;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:'Segoe UI',sans-serif;overflow:hidden}
+#wrapper{position:relative;width:100vw;max-width:480px}
+#gameCanvas{display:block;width:100%;touch-action:none}
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,5,16,0.9);transition:opacity .3s}
+#overlay.hidden{opacity:0;pointer-events:none}
+.ov-title{font-size:clamp(18px,5vw,26px);font-weight:700;color:#fff;margin-bottom:8px;text-align:center}
+.ov-sub{font-size:clamp(11px,3vw,13px);color:rgba(255,255,255,0.6);margin-bottom:18px;text-align:center;padding:0 20px;line-height:1.8}
+.ov-btn{padding:13px 38px;border-radius:30px;border:none;background:linear-gradient(135deg,#3498db,#1a6fb0);color:#fff;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 4px 20px rgba(52,152,219,.4);margin-bottom:10px}
+.ov-btn:active{transform:scale(.97)}
+.ov-btn2{padding:9px 24px;border-radius:20px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:13px;cursor:pointer}
+.ov-score{font-size:clamp(14px,3.5vw,18px);color:#f1c40f;margin-bottom:4px;font-weight:600}
+.ov-best{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:18px}
+
+/* HUD */
+#hud{position:absolute;top:0;left:0;right:0;padding:8px 12px;display:flex;justify-content:space-between;pointer-events:none}
+.hud-item{background:rgba(0,0,0,.55);border-radius:8px;padding:4px 10px;color:#fff;font-size:clamp(11px,2.5vw,13px);font-weight:600}
+.hud-label{color:rgba(255,255,255,.4);font-size:9px;display:block}
+
+/* Controls HUD bottom */
+#ctrl-hud{position:absolute;bottom:78px;left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;pointer-events:none}
+.ctrl-pill{display:flex;flex-direction:column;align-items:center;gap:3px}
+.ctrl-icon{width:44px;height:44px;border-radius:50%;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:20px;background:rgba(0,0,0,.4);transition:all .1s}
+.ctrl-icon.active{border-color:#2ecc71;background:rgba(46,204,113,.25);box-shadow:0 0 14px rgba(46,204,113,.5)}
+.ctrl-icon.brake-active{border-color:#e74c3c;background:rgba(231,76,60,.25);box-shadow:0 0 14px rgba(231,76,60,.5)}
+.ctrl-label{font-size:9px;color:rgba(255,255,255,.4);letter-spacing:.5px}
+
+/* Steering indicator */
+#steer-hud{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none}
+#steer-arc{width:110px;height:28px;position:relative}
+#steer-bar{width:110px;height:14px;background:rgba(0,0,0,.5);border-radius:7px;border:1px solid rgba(255,255,255,.15);overflow:hidden;position:relative}
+#steer-fill{height:100%;width:50%;background:linear-gradient(90deg,#3498db,#5dade2);border-radius:7px;transform-origin:left}
+#steer-dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#fff;left:50%}
+#steer-label{font-size:9px;color:rgba(255,255,255,.35);letter-spacing:.5px}
+
+/* Speed bar */
+#speed-bar-wrap{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none}
+#speed-bar-bg{width:8px;height:120px;background:rgba(0,0,0,.5);border-radius:4px;border:1px solid rgba(255,255,255,.15);position:relative;overflow:hidden}
+#speed-bar-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,#2ecc71,#f1c40f,#e74c3c);border-radius:4px;transition:height .1s}
+#speed-label{font-size:9px;color:rgba(255,255,255,.35)}
+
+/* Cam */
+#cam-box{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);border-radius:10px;overflow:hidden;border:1.5px solid rgba(52,152,219,.4);background:#000}
+#camVid{display:block;width:160px;height:90px;object-fit:cover}
+#camCanvas{position:absolute;top:0;left:0;width:160px;height:90px}
+
+#msg-small{position:absolute;top:52px;left:50%;transform:translateX(-50%);color:#f1c40f;font-size:13px;font-weight:600;text-align:center;pointer-events:none;opacity:0;transition:opacity .4s;white-space:nowrap;text-shadow:0 1px 6px #000}
+#msg-small.show{opacity:1}
+#status-bar{position:absolute;bottom:102px;left:50%;transform:translateX(-50%);font-size:10px;color:rgba(255,255,255,.4);white-space:nowrap;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="wrapper">
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="hud">
+    <div class="hud-item"><span class="hud-label">SCORE</span><span id="hScore">0</span></div>
+    <div class="hud-item" style="text-align:center"><span class="hud-label">LAP</span><span id="hLap">0/3</span></div>
+    <div class="hud-item" style="text-align:right"><span class="hud-label">KM/H</span><span id="hSpeed">0</span></div>
+  </div>
+
+  <div id="speed-bar-wrap">
+    <div id="speed-bar-bg"><div id="speed-bar-fill" style="height:0%"></div></div>
+    <div id="speed-label">SPD</div>
+  </div>
+
+  <div id="ctrl-hud">
+    <div class="ctrl-pill">
+      <div class="ctrl-icon" id="brakeIcon">🛑</div>
+      <div class="ctrl-label">LEFT THUMB<br>= BRAKE</div>
+    </div>
+    <div class="ctrl-pill">
+      <div class="ctrl-icon" id="accelIcon">⚡</div>
+      <div class="ctrl-label">RIGHT THUMB<br>= GAS</div>
+    </div>
+  </div>
+
+  <div id="steer-hud">
+    <div id="steer-bar"><div id="steer-fill"></div><div id="steer-dot"></div></div>
+    <div id="steer-label">STEERING</div>
+  </div>
+
+  <div id="msg-small"></div>
+  <div id="status-bar"></div>
+
+  <div id="cam-box">
+    <video id="camVid" autoplay muted playsinline></video>
+    <canvas id="camCanvas" width="160" height="90"></canvas>
+  </div>
+
+  <div id="overlay">
+    <div class="ov-title" id="ovTitle">🏎️ HAND RACE</div>
+    <div class="ov-sub" id="ovSub">
+      🤲 Hold both hands like a steering wheel<br>
+      ↔️ <b>Rotate hands</b> → Left / Right to steer<br>
+      👍 <b>Right thumb DOWN</b> → Accelerate ⚡<br>
+      👍 <b>Left thumb DOWN</b> → Brake 🛑
+    </div>
+    <button class="ov-btn" id="ovBtn" style="display:none">▶ Start Race</button>
+    <button class="ov-btn2" id="touchBtn" style="display:none">Use Touch Instead</button>
+    <div class="ov-score" id="ovScore" style="display:none"></div>
+    <div class="ov-best" id="ovBest" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const canvas=document.getElementById('gameCanvas');
+const ctx=canvas.getContext('2d');
+const W=390,H=680;
+canvas.width=W;canvas.height=H;
+
+const camVid=document.getElementById('camVid');
+const camCanvas=document.getElementById('camCanvas');
+const camCtx=camCanvas.getContext('2d');
+
+const overlay=document.getElementById('overlay');
+const ovTitle=document.getElementById('ovTitle');
+const ovSub=document.getElementById('ovSub');
+const ovScore=document.getElementById('ovScore');
+const ovBest=document.getElementById('ovBest');
+const ovBtn=document.getElementById('ovBtn');
+const touchBtn=document.getElementById('touchBtn');
+const hScore=document.getElementById('hScore');
+const hLap=document.getElementById('hLap');
+const hSpeed=document.getElementById('hSpeed');
+const steerFill=document.getElementById('steer-fill');
+const steerDot=document.getElementById('steer-dot');
+const msgSmall=document.getElementById('msg-small');
+const statusBar=document.getElementById('status-bar');
+const accelIcon=document.getElementById('accelIcon');
+const brakeIcon=document.getElementById('brakeIcon');
+const speedBarFill=document.getElementById('speed-bar-fill');
+
+// Game state
+let state='menu';
+let score=0,bestScore=0,lap=0,lapProgress=0;
+let raf;
+
+// Road
+const RW=240,CX=W/2;
+const roadL=CX-RW/2,roadR=CX+RW/2;
+let roadOff=0;
+
+// Car physics
+const CAR={x:CX,y:H-130,w:38,h:66,speed:0,maxSpeed:0};
+
+// Entities
+let enemies=[],coins=[],sparks=[];
+let eTimer=0,cTimer=0;
+const LANES=[roadL+40,CX,roadR-40];
+const LAP_DIST=2200;
+const ENEMY_COLORS=['#e74c3c','#e67e22','#9b59b6','#1abc9c','#e91e63'];
+
+// Hand controls — steering from BOTH hands combined angle
+let steer=0;       // -1 left … +1 right
+let accel=false;   // right thumb down
+let brake=false;   // left thumb down
+let handsReady=false,touchMode=false;
+
+function setStatus(t){statusBar.textContent=t;}
+function showMsg(t){msgSmall.textContent=t;msgSmall.classList.add('show');setTimeout(()=>msgSmall.classList.remove('show'),1400);}
+
+// ── Drawing ────────────────────────────────────────────────────────
+function drawRoad(){
+  ctx.fillStyle='#0c0c22';ctx.fillRect(0,0,W,H);
+  // Grass
+  ctx.fillStyle='#0a220a';ctx.fillRect(0,0,roadL-6,H);ctx.fillRect(roadR+6,0,W-(roadR+6),H);
+  // Road
+  ctx.fillStyle='#1c1c30';ctx.fillRect(roadL,0,RW,H);
+  // Kerb edges
+  for(let y=-20;y<H+20;y+=30){
+    const s=Math.floor((y+roadOff/2)/30)%2;
+    ctx.fillStyle=s?'#c0392b':'#fff';
+    ctx.fillRect(roadL-6,y,6,15);
+    ctx.fillRect(roadR,y,6,15);
+  }
+  // Center dash
+  ctx.save();
+  ctx.strokeStyle='rgba(255,220,0,.65)';ctx.lineWidth=3;
+  ctx.setLineDash([36,28]);ctx.lineDashOffset=-(roadOff%64);
+  ctx.beginPath();ctx.moveTo(CX,0);ctx.lineTo(CX,H);ctx.stroke();
+  // Lane lines
+  ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1.5;
+  ctx.setLineDash([20,30]);ctx.lineDashOffset=-(roadOff%50);
+  [roadL+RW/3,roadR-RW/3].forEach(lx=>{ctx.beginPath();ctx.moveTo(lx,0);ctx.lineTo(lx,H);ctx.stroke();});
+  ctx.restore();
+}
+
+function drawCarShape(x,y,w,h,col,isPlayer){
+  ctx.save();ctx.translate(x,y);
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,.38)';
+  ctx.beginPath();ctx.ellipse(0,h/2-2,w/2-3,7,0,0,Math.PI*2);ctx.fill();
+  // Body
+  ctx.fillStyle=col;
+  ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,[10,10,5,5]);ctx.fill();
+  // Roof
+  ctx.fillStyle=isPlayer?'#1a5276':'rgba(0,0,0,.3)';
+  ctx.beginPath();ctx.roundRect(-w/2+5,-h/2+h*.25,w-10,h*.3,5);ctx.fill();
+  // Windshield
+  ctx.fillStyle=isPlayer?'rgba(130,230,255,.85)':'rgba(60,60,60,.7)';
+  ctx.beginPath();ctx.roundRect(-w/2+6,-h/2+7,w-12,h*.22,4);ctx.fill();
+  // Headlights
+  ctx.fillStyle=isPlayer?'#fff':'#aaa';
+  [[-w/2+6],[w/2-6]].forEach(([lx])=>{ctx.beginPath();ctx.ellipse(lx,-h/2+5,5,3.5,0,0,Math.PI*2);ctx.fill();});
+  // Taillights
+  ctx.fillStyle=isPlayer&&brake?'#ff8888':'#f44';
+  [[-w/2+6],[w/2-6]].forEach(([lx])=>{ctx.beginPath();ctx.ellipse(lx,h/2-5,4,3,0,0,Math.PI*2);ctx.fill();});
+  // Brake glow
+  if(isPlayer&&brake){
+    ctx.fillStyle='rgba(255,50,50,.18)';
+    ctx.beginPath();ctx.roundRect(-w/2,-h/2,w,h,[10,10,5,5]);ctx.fill();
+  }
+  // Speed exhaust
+  if(isPlayer&&accel&&CAR.speed>4){
+    ctx.fillStyle='rgba(52,152,219,.3)';
+    const pw=6,ph=8+CAR.speed*1.5;
+    ctx.beginPath();ctx.roundRect(-pw/2,h/2,pw,ph,3);ctx.fill();
+    ctx.fillStyle='rgba(255,150,50,.2)';
+    ctx.beginPath();ctx.roundRect(-pw/2+1,h/2+ph*.3,pw-2,ph*.4,2);ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawCoin(c){
+  const sc=Math.abs(Math.cos(c.spin));
+  ctx.save();ctx.translate(c.x,c.y);ctx.scale(sc,1);
+  const g=ctx.createRadialGradient(0,0,2,0,0,c.r);
+  g.addColorStop(0,'#ffe066');g.addColorStop(1,'#e67e00');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,c.r,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  ctx.beginPath();ctx.ellipse(-c.r*.25,-c.r*.25,c.r*.35,c.r*.2,-.5,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function drawSparks(){
+  sparks.forEach(s=>{ctx.globalAlpha=s.life;ctx.fillStyle=s.col;ctx.beginPath();ctx.arc(s.x,s.y,4*s.life,0,Math.PI*2);ctx.fill();});
+  ctx.globalAlpha=1;
+}
+
+function addSparks(x,y,col,n=16){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2,sp=1.5+Math.random()*5;
+    sparks.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,col});
+  }
+}
+
+// ── Game logic ─────────────────────────────────────────────────────
+function resetGame(){
+  score=0;lap=0;lapProgress=0;
+  CAR.x=CX;CAR.y=H-130;CAR.speed=0;CAR.maxSpeed=0;
+  enemies=[];coins=[];sparks=[];
+  eTimer=0;cTimer=0;roadOff=0;
+}
+
+function collide(ax,ay,aw,ah,bx,by,bw,bh){
+  return Math.abs(ax-bx)<(aw+bw)/2-6&&Math.abs(ay-by)<(ah+bh)/2-8;
+}
+
+function update(){
+  // ── Steer
+  const targetX=CX+steer*(RW/2-CAR.w/2-8);
+  CAR.x+=(targetX-CAR.x)*.12;
+  CAR.x=Math.max(roadL+CAR.w/2+4,Math.min(roadR-CAR.w/2-4,CAR.x));
+
+  // ── Speed control
+  const baseMax=Math.min(14,6+lapProgress/350+lap*1.2);
+  if(brake){
+    CAR.speed=Math.max(0,CAR.speed-0.35);
+  } else if(accel){
+    CAR.speed=Math.min(baseMax,CAR.speed+0.18);
+  } else {
+    // Coast — gentle decel
+    CAR.speed=Math.max(2,CAR.speed-0.06);
+  }
+
+  roadOff+=CAR.speed*2.5;
+  lapProgress+=CAR.speed;
+  score+=Math.round(CAR.speed*.07);
+
+  // ── Lap
+  if(lapProgress>=LAP_DIST){
+    lapProgress=0;lap++;score+=200;
+    showMsg(lap>=3?'🏁 Final Lap!':`✅ Lap ${lap}! +200`);
+    if(lap>=3){setTimeout(()=>endGame(true),900);return;}
+  }
+
+  // ── Spawn
+  eTimer++;cTimer++;
+  const eRate=Math.max(38,100-lapProgress/25-lap*10);
+  if(eTimer>=eRate){
+    const lane=LANES[Math.floor(Math.random()*3)];
+    const col=ENEMY_COLORS[Math.floor(Math.random()*ENEMY_COLORS.length)];
+    enemies.push({x:lane,y:-80,w:40,h:66,col,spd:2+Math.random()*3});
+    eTimer=0;
+  }
+  if(cTimer>=70){
+    coins.push({x:LANES[Math.floor(Math.random()*3)],y:-20,r:12,spin:0});
+    cTimer=0;
+  }
+
+  // ── Enemies
+  enemies=enemies.filter(e=>{
+    e.y+=e.spd+CAR.speed*.7;
+    if(collide(CAR.x,CAR.y,CAR.w,CAR.h,e.x,e.y,e.w,e.h)){
+      addSparks(CAR.x,CAR.y,'#e74c3c');endGame(false);return false;
+    }
+    return e.y<H+100;
+  });
+
+  // ── Coins
+  coins=coins.filter(c=>{
+    c.y+=1.5+CAR.speed*.35;c.spin+=.1;
+    if(collide(CAR.x,CAR.y,CAR.w,CAR.h,c.x,c.y,c.r*2,c.r*2)){
+      addSparks(c.x,c.y,'#f1c40f',10);score+=30;showMsg('+30 🪙');return false;
+    }
+    return c.y<H+30;
+  });
+
+  // ── Sparks
+  sparks=sparks.filter(s=>{s.x+=s.vx;s.y+=s.vy;s.vy+=.18;s.life-=.028;return s.life>0;});
+
+  // ── HUD update
+  hScore.textContent=score;
+  hLap.textContent=`${lap}/3`;
+  hSpeed.textContent=Math.round(CAR.speed*15);
+  speedBarFill.style.height=Math.round(CAR.speed/14*100)+'%';
+
+  const pct=((steer+1)/2)*100;
+  steerFill.style.width=pct+'%';
+  steerDot.style.left=pct+'%';
+
+  // Control icons
+  accelIcon.className='ctrl-icon'+(accel?' active':'');
+  brakeIcon.className='ctrl-icon'+(brake?' brake-active':'');
+}
+
+function render(){
+  ctx.clearRect(0,0,W,H);
+  drawRoad();
+  coins.forEach(drawCoin);
+  enemies.forEach(e=>drawCarShape(e.x,e.y,e.w,e.h,e.col,false));
+  drawCarShape(CAR.x,CAR.y,CAR.w,CAR.h,'#3498db',true);
+  drawSparks();
+  // Speed blur vignette
+  if(CAR.speed>9){
+    const a=Math.min(.22,(CAR.speed-9)*.05);
+    ctx.fillStyle=`rgba(52,152,219,${a})`;
+    ctx.fillRect(0,0,W,H);
+  }
+}
+
+function loop(){
+  if(state!=='running')return;
+  update();render();
+  raf=requestAnimationFrame(loop);
+}
+
+function startGame(){resetGame();state='running';overlay.classList.add('hidden');raf=requestAnimationFrame(loop);}
+
+function endGame(won){
+  if(state!=='running')return;
+  state=won?'won':'dead';
+  cancelAnimationFrame(raf);render();
+  if(score>bestScore)bestScore=score;
+  ovTitle.textContent=won?'🏆 Race Complete!':'💥 Crashed!';
+  ovSub.textContent=won?'You finished all 3 laps! 🎉':'You hit another car!';
+  ovScore.textContent=`Score: ${score}`;ovBest.textContent=`Best: ${bestScore}`;
+  ovScore.style.display='block';ovBest.style.display='block';
+  ovBtn.textContent='▶ Race Again';ovBtn.style.display='block';
+  touchBtn.style.display='none';
+  overlay.classList.remove('hidden');
+}
+
+ovBtn.addEventListener('click',startGame);
+
+// ── Touch fallback ─────────────────────────────────────────────────
+function enableTouchMode(){
+  touchMode=true;handsReady=true;
+  document.getElementById('cam-box').style.display='none';
+  document.getElementById('ctrl-hud').style.display='none';
+  // Left half = brake, right half = accel, position = steer
+  canvas.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    brake=false;accel=false;
+    Array.from(e.touches).forEach(t=>{
+      const rx=(t.clientX-r.left)/r.width;
+      steer=Math.max(-1,Math.min(1,(rx-.5)*2.2));
+      if(rx<.35) brake=true;
+      else if(rx>.65) accel=true;
+    });
+  },{passive:false});
+  canvas.addEventListener('touchstart',e=>{
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    Array.from(e.touches).forEach(t=>{
+      const rx=(t.clientX-r.left)/r.width;
+      if(rx<.35) brake=true;
+      else if(rx>.65) accel=true;
+    });
+  },{passive:false});
+  canvas.addEventListener('touchend',()=>{brake=false;accel=false;});
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect();
+    steer=Math.max(-1,Math.min(1,((e.clientX-r.left)/r.width-.5)*2.2));
+    accel=e.buttons===1;
+  });
+  ovTitle.textContent='👆 Touch Mode';
+  ovSub.textContent='Left side → Brake 🛑\nRight side → Gas ⚡\nSlide to steer ↔️';
+  ovBtn.textContent='▶ Start Race';ovBtn.style.display='block';
+  touchBtn.style.display='none';
+  setStatus('');
+}
+
+touchBtn.addEventListener('click',enableTouchMode);
+
+// ── MediaPipe Hand Tracking ────────────────────────────────────────
+// Detect thumb-down: tip (4 or 20) y > IP joint (3 or 19) y
+function isThumbDown(lm){
+  // Thumb tip y > thumb MCP y means pointing down
+  return lm[4].y > lm[2].y;
+}
+
+// Determine hand side from wrist vs middle finger base x
+// In mirrored view: if wrist.x < index_mcp.x → right hand (from user's perspective)
+function isRightHand(lm){
+  // lm[0]=wrist, lm[5]=index MCP, lm[17]=pinky MCP
+  // In camera (mirrored): right hand has wrist on left side of index
+  return lm[0].x > lm[17].x;
+}
+
+function getHandAngle(lm){
+  // Angle of wrist→middle_MCP line from vertical
+  const dx=lm[9].x-lm[0].x;
+  const dy=lm[9].y-lm[0].y;
+  return Math.atan2(dx,-dy); // radians, 0=up, +ve=right tilt
+}
+
+function initHands(){
+  const hands=new Hands({
+    locateFile:f=>`https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
+  });
+  hands.setOptions({
+    maxNumHands:2,
+    modelComplexity:0,
+    minDetectionConfidence:.6,
+    minTrackingConfidence:.5
+  });
+
+  let warmup=false;
+  let leftAngle=0,rightAngle=0;
+  let leftSeen=false,rightSeen=false;
+
+  hands.onResults(res=>{
+    // Draw mirrored camera feed
+    camCtx.save();
+    camCtx.translate(160,0);camCtx.scale(-1,1);
+    camCtx.drawImage(res.image,0,0,160,90);
+    camCtx.restore();
+
+    // Reset per-frame
+    leftSeen=false;rightSeen=false;
+    let newBrake=false,newAccel=false;
+
+    if(res.multiHandLandmarks&&res.multiHandLandmarks.length>0){
+      res.multiHandLandmarks.forEach((lm,i)=>{
+        // MediaPipe gives handedness as "Left"/"Right" but it's MIRRORED
+        // so we flip: "Left" label = user's right hand
+        const label=res.multiHandedness&&res.multiHandedness[i]?res.multiHandedness[i].label:'';
+        const userRight=(label==='Left'); // mirrored
+        const userLeft=(label==='Right');
+
+        const angle=getHandAngle(lm);
+        const thumbDown=isThumbDown(lm);
+
+        if(userRight){rightAngle=angle;rightSeen=true;if(thumbDown)newAccel=true;}
+        if(userLeft) {leftAngle=angle; leftSeen=true; if(thumbDown)newBrake=true;}
+
+        // Fallback if handedness not reliable: use position
+        if(!label){
+          // use x position to guess: left side of frame = user's right (mirrored)
+          const avgX=lm[0].x;
+          if(avgX<.5){rightAngle=angle;rightSeen=true;if(thumbDown)newAccel=true;}
+          else{leftAngle=angle;leftSeen=true;if(thumbDown)newBrake=true;}
+        }
+
+        // Draw skeleton on cam canvas
+        const CONN=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+          [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+          [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+        camCtx.strokeStyle=thumbDown?'#f1c40f':'#3af';
+        camCtx.lineWidth=1.5;
+        CONN.forEach(([a,b])=>{
+          camCtx.beginPath();
+          camCtx.moveTo((1-lm[a].x)*160,lm[a].y*90);
+          camCtx.lineTo((1-lm[b].x)*160,lm[b].y*90);
+          camCtx.stroke();
+        });
+        lm.forEach(p=>{
+          camCtx.fillStyle=p===lm[4]?'#f1c40f':'#5df';
+          camCtx.beginPath();camCtx.arc((1-p.x)*160,p.y*90,2.5,0,Math.PI*2);camCtx.fill();
+        });
+      });
+
+      accel=newAccel;
+      brake=newBrake;
+
+      // Steering: average of both seen hands, or single hand
+      let combinedAngle=0;
+      if(leftSeen&&rightSeen) combinedAngle=(leftAngle+rightAngle)/2;
+      else if(leftSeen) combinedAngle=leftAngle;
+      else if(rightSeen) combinedAngle=rightAngle;
+
+      const targetSteer=Math.max(-1,Math.min(1,combinedAngle/(Math.PI/3.5)));
+      steer+=(targetSteer-steer)*.25;
+
+      if(!warmup){
+        warmup=true;handsReady=true;
+        ovTitle.textContent='✅ Hands Detected!';
+        ovSub.textContent='Rotate hands like a steering wheel ↔️\nRight thumb down → Gas ⚡\nLeft thumb down → Brake 🛑';
+        ovBtn.style.display='block';
+        touchBtn.style.display='none';
+        setStatus('');
+      }
+    } else {
+      // No hands
+      steer*=.9;accel=false;brake=false;
+      if(!warmup) setStatus('Show both hands ✋✋');
+      else setStatus('Hands not visible ✋');
+    }
+  });
+
+  setStatus('Warming up model… ✋');
+  const cam=new Camera(camVid,{
+    onFrame:async()=>{await hands.send({image:camVid});},
+    width:320,height:240
+  });
+  cam.start().catch(()=>{
+    ovTitle.textContent='⚠️ Camera Error';
+    ovSub.textContent='Camera could not start.';
+    ovBtn.style.display='none';touchBtn.style.display='block';
+    setStatus('');
+  });
+}
+
+function waitForMP(cb,n=0){
+  if(typeof Hands!=='undefined'&&typeof Camera!=='undefined'){cb();return;}
+  if(n>50){
+    ovTitle.textContent='⚠️ Load Error';
+    ovSub.textContent='Hand tracking failed to load. Use touch mode.';
+    ovBtn.style.display='none';touchBtn.style.display='block';setStatus('');return;
+  }
+  setStatus(`Loading model… ${n+1}`);
+  setTimeout(()=>waitForMP(cb,n+1),300);
+}
+
+function requestCamera(){
+  setStatus('Requesting camera…');
+  navigator.mediaDevices.getUserMedia({
+    video:{facingMode:'user',width:{ideal:320},height:{ideal:240}},
+    audio:false
+  }).then(stream=>{
+    camVid.srcObject=stream;
+    setStatus('Camera ready, loading model…');
+    waitForMP(initHands);
+  }).catch(err=>{
+    console.warn('Camera denied:',err);
+    ovTitle.textContent='📷 Camera Denied';
+    ovSub.textContent='Allow camera and reload, or use touch mode below.';
+    ovBtn.style.display='none';touchBtn.style.display='block';setStatus('');
+  });
+}
+
+// Initial draw
+ctx.fillStyle='#050510';ctx.fillRect(0,0,W,H);
+drawRoad();drawCarShape(CX,H-130,38,66,'#3498db',true);
+
+window.addEventListener('load',()=>{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){enableTouchMode();return;}
+  setTimeout(requestCamera,300);
+});
+
+})();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+</body>
+</html>
